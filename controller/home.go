@@ -1,12 +1,12 @@
 package controller
 
 import (
+	"controller-demo/model"
 	"controller-demo/viewmodel"
 	"fmt"
 	"html/template"
 	"log"
 	"net/http"
-	"time"
 )
 
 type home struct {
@@ -21,9 +21,13 @@ func (h home) registerRoutes() {
 }
 
 func (h home) handleHome(w http.ResponseWriter, r *http.Request) {
+	if pusher, ok := w.(http.Pusher); ok {
+		pusher.Push("/css/app.css", &http.PushOptions{
+			Header: http.Header{"Content-Type": []string{"text/css"}},
+		})
+	}
 	vm := viewmodel.NewHome()
 	w.Header().Add("Content-Type", "text/html")
-	time.Sleep(4 * time.Second)
 	h.homeTemplate.Execute(w, vm)
 }
 
@@ -36,10 +40,12 @@ func (h home) handleLogin(w http.ResponseWriter, r *http.Request) {
 		}
 		email := r.Form.Get("email")
 		password := r.Form.Get("password")
-		if email == "test@gmail.com" && password == "password" {
+		if user, err := model.Login(email, password); err == nil {
+			log.Printf("User has logged in: %v\n", user)
 			http.Redirect(w, r, "/home", http.StatusTemporaryRedirect)
 			return
 		} else {
+			log.Printf("Failed to log user in with email: %v, error was: %v\n", email, err)
 			vm.Email = email
 			vm.Password = password
 		}
